@@ -17,8 +17,11 @@
 template<typename... ArgTypes>
 auto err(ArgTypes... args) { fprintf(stderr, args...); }
 
+using KPRIORITY = LONG;
+
 constexpr auto DIRECTORY_QUERY = static_cast<ACCESS_MASK>(0x0001);
 constexpr auto STATUS_MORE_ENTRIES = static_cast<NTSTATUS>(0x00000105L);
+constexpr auto STATUS_INFO_LENGTH_MISMATCH = static_cast<NTSTATUS>(0xC0000004L);
 constexpr auto NT_SUCCESS(NTSTATUS nts) { return nts >= 0L; }
 
 void getlasterror(const DWORD ecode = ::GetLastError()) {
@@ -123,6 +126,54 @@ enum OBJECT_INFORMATION_CLASS {
   MaxObjectInfoClass
 };
 
+struct SYSTEM_SESSION_PROCESS_INFORMATION {
+  ULONG SessionId;
+  ULONG SizeOfBuf;
+  PVOID Buffer;
+};
+
+struct SYSTEM_PROCESS_INFORMATION {
+   ULONG  NextEntryOffset;
+   ULONG  NumberOfThreads;
+   LARGE_INTEGER WorkingSetPrivateSize;
+   ULONG  HardFaultCount;
+   ULONG  NumberOfThreadsHighWatermark;
+   ULONGLONG CycleTime;
+   LARGE_INTEGER CreateTime;
+   LARGE_INTEGER UserTime;
+   LARGE_INTEGER KernelTime;
+   UNICODE_STRING ImageName;
+   KPRIORITY BasePriority;
+   HANDLE UniqueProcessId;
+   HANDLE InheritedFromUniqueProcessId;
+   ULONG  HandleCount;
+   ULONG  SessionId;
+   UINT_PTR UniqueProcessKey;
+   SIZE_T PeakVirtualSize;
+   SIZE_T VirtualSize;
+   ULONG  PageFaultCount;
+   SIZE_T PeakWorkingSetSize;
+   SIZE_T WorkingSetSize;
+   SIZE_T QuotaPeakPagedPoolUsage;
+   SIZE_T QuotaPagedPoolUsage;
+   SIZE_T QuotaPeakNonPagedPoolUsage;
+   SIZE_T QuotaNonPagedPoolUsage;
+   SIZE_T PagefileUsage;
+   SIZE_T PeakPagefileUsage;
+   SIZE_T PrivatePageCount;
+   LARGE_INTEGER ReadOperationCount;
+   LARGE_INTEGER WriteOperationCount;
+   LARGE_INTEGER OtherOperationCount;
+   LARGE_INTEGER ReadTransferCount;
+   LARGE_INTEGER WriteTransferCount;
+   LARGE_INTEGER OtherTransferCount;
+};
+using PSYSTEM_PROCESS_INFORMATION = SYSTEM_PROCESS_INFORMATION*;
+
+enum SYSTEM_INFORMATION_CLASS { // reduced
+  SystemSessionProcessInformation = 53
+};
+
 extern "C" {
   NTSYSCALLAPI
   NTSTATUS
@@ -166,6 +217,16 @@ extern "C" {
     _Out_opt_ PULONG ReturnLength
   );
 
+  NTSYSCALLAPI
+  NTSTATUS
+  NTAPI
+  NtQuerySystemInformation(
+    _In_ SYSTEM_INFORMATION_CLASS SystemInformationClass,
+    _Out_writes_bytes_opt_(SystemInformationLength) PVOID SystemInformation,
+    _In_ ULONG SystemInformationLength,
+    _Out_opt_ PULONG ReturnLength
+  );
+
   NTSYSAPI
   VOID
   NTAPI
@@ -187,6 +248,15 @@ extern "C" {
   RtlTimeToTimeFields(
     _In_ PLARGE_INTEGER Time,
     _Out_ PTIME_FIELDS TimeFields
+  );
+
+  NTSYSAPI
+  NTSTATUS
+  NTAPI
+  RtlUnicodeStringToInteger(
+    _In_ PUNICODE_STRING String,
+    _In_opt_ ULONG Base,
+    _Out_ PULONG Value
   );
 }
 
